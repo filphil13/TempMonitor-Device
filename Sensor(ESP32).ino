@@ -11,9 +11,9 @@
 #define SCAN_INTERVAL 5000
 #define DHTTYPE DHT22
 
-String SSID = "Hagrid's Hut";
-String PASSWORD = "D31E6DFF9C64";
-String IP = "http://192.168.2.11:8080/updateSensor";
+String SSID = "";
+String PASSWORD = "";
+String IP = "https://temp-monitor-a38f32c02c5e.herokuapp.com/";
 DHT dht(DHTPIN, DHTTYPE);
 
 String SENSOR_NAME = "Test Sensor 1";
