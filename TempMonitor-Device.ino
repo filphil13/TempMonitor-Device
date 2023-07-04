@@ -13,9 +13,10 @@
 
 String SSID = "";
 String PASSWORD = "";
-String IP = "https://temp-monitor-a38f32c02c5e.herokuapp.com/";
+String IP = "http://temp-monitor-a38f32c02c5e.herokuapp.com/updateSensor";
 DHT dht(DHTPIN, DHTTYPE);
-
+WiFiClient client;
+HTTPClient http;
 String SENSOR_NAME = "Test Sensor 1";
 float TEMPERATURE = 0.0f;
 float HUMIDITY = 0.0f;
@@ -74,10 +75,9 @@ void updateData(){
 }
 
 void sendData(){
-	WiFiClient client;
-    HTTPClient http;
 
-    http.begin(client, IP);
+
+    http.begin(client, IP.c_str());
     http.addHeader("Content-Type", "application/json");
 
 	StaticJsonDocument<96> doc;
@@ -85,6 +85,7 @@ void sendData(){
 	doc["name"] = SENSOR_NAME;
 	doc["temperature"] = TEMPERATURE;
 	doc["humidity"] = HUMIDITY;
+	doc["time"] = 0;
 	
 	String output;
 	serializeJson(doc, output);
@@ -93,6 +94,7 @@ void sendData(){
 
 
     int httpResponseCode = http.POST(output);
+
     Serial.print("HTTP Response code: ");
     Serial.println(httpResponseCode);
 
