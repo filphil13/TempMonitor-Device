@@ -38,7 +38,7 @@ bool setupWiFi(String ssid, String password){
   	Serial.println("Connecting");
 
 	int temp = millis();
-  	while((WiFi.status() != WL_CONNECTED) && (millis() - lastTime) > timerDelay) {
+  	while((WiFi.status() != WL_CONNECTED) && !((millis() - lastTime) > timerDelay)) {
     	Serial.print(".");
 		delay(100);
 		temp = millis();
@@ -109,7 +109,7 @@ void updateData(){
 
 void sendData(){
 	if(WiFi.status()== WL_CONNECTED){
-		http.begin(client, IP.c_str());
+		http.begin(client, URL.c_str());
 		http.addHeader("Content-Type", "application/json");
 
 		StaticJsonDocument<96> doc;
@@ -135,16 +135,27 @@ void sendData(){
 	}
 }
 
+void changeURL(String url){
+	URL = url;
+	saveCreds();
+}
+
+void changeName(String name){
+	SENSOR_NAME = name;
+	saveCreds();
+}
 //SYSTEM FUNCTIONS
 
 void loadCreds(){
 	preferences.begin("sensor-creds",false);
 	String ssid = preferences.getString("ssid", "");
 	String password = preferences.getString("password", "");
-	String name = preferences.getString("name", "");
+	String name = preferences.getString("name", "NO_NAME_SET");
+	String url = preferences.getString("url", "");
 
 	Serial.println(ssid);
 	Serial.println(password);
+
 	//If no credentials are saved, prompt user for setup on serial
 	if (ssid == ""){
 		unsigned long lastMsgTime = millis();
@@ -170,9 +181,12 @@ void loadCreds(){
 		password = Serial.readString();
 	}
 
+	//IMPORT ALL THE DATA INTO VARIABLES
 	SSID = ssid;
 	PASSWORD = password;
 	SENSOR_NAME = name;
+	URL = url;
+
 	saveCreds();
 
 	preferences.end();	
@@ -184,8 +198,25 @@ void saveCreds(){
 	preferences.putString("ssid", SSID);
 	preferences.putString("password", PASSWORD);
 	preferences.putString("name", SENSOR_NAME);
+	preferences.putString("url", URL);
 
 	preferences.end();
+}
+
+void printCreds(){
+	preferences.begin("sensor-creds",false);
+	String ssid = preferences.getString("ssid", "");
+	String password = preferences.getString("password", "");
+	String name = preferences.getString("name", "NO_NAME_SET");
+	String url = preferences.getString("url", "");
+
+	Serial.println("SSID: " + SSID);
+	Serial.println("PASSWORD: " + PASSWORD);
+	Serial.println("NAME: " + SENSOR_NAME);
+	Serial.println("URL: " + URL);
+
+	preferences.end();
+
 }
 
 void printData(){
@@ -220,16 +251,22 @@ void printNetworkStatus(){
 // pn - print network settings
 // sn - scan nearby networks
 // r  - restart sensor
+// cu - change URL
 
 void SPIMenu(){
 	String msg = Serial.readString();
 	if (msg == "h"){
-		Serial.println("h  - display spi menu");
-		Serial.println("cw - Change Wifi Credentials");
-		Serial.println("cn - Change Sensor Name");
-		Serial.println("pn - View Network Settings");
-		Serial.println("sn - Print Nearby Networks");
-		Serial.println("r  - Restart Sensor");
+		Serial.println("h  	- display spi menu");
+		Serial.println("r  	- Restart Sensor");
+		Serial.println("");
+		Serial.println("cw 	- Change Wifi Credentials");
+		Serial.println("cn 	- Change Sensor Name");
+		Serial.println("cu	- Change URL");
+		Serial.println("");
+		Serial.println("pn 	- Print Network Settings");
+		Serial.println("pc	- Print Credentials");
+		Serial.println("sn 	- Print Nearby Networks");
+		
 	}
 	else if(msg == "cw"){
 
@@ -247,10 +284,20 @@ void SPIMenu(){
 		Serial.println("Please Enter Name");
 		while(Serial.peek() == -1){}
 
-		SENSOR_NAME = Serial.readString();
+		String name = Serial.readString();
+		changeName(name);
+	}
+	else if(msg == "cu"){
+		Serial.println("Please Enter the new URL Address:");
+		while(Serial.peek() == -1){}
+		String url = Serial.readString();
+		changeURL(url);
 	}
 	else if(msg == "pn"){
 		printNetworkStatus();
+	}
+	else if(msg == "pc"){
+		printCreds();
 	}
 	else if(msg == "sn"){
 		scanWifi();
@@ -260,7 +307,6 @@ void SPIMenu(){
 	}
 	else{
 		Serial.println(msg);
-		Serial.println(msg);
-		Serial.println("Error: command not found.");
+		Serial.println("Error: '"+ msg + "'command not found.");
 	}
 }

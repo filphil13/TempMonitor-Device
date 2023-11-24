@@ -30,10 +30,10 @@ Preferences preferences;
 #define WIFI_MODE WIFI_STA
 String SSID;
 String PASSWORD;
-String IP = "http://temp-monitor-a38f32c02c5e.herokuapp.com/updateSensor";
+String SENSOR_NAME;
+String URL;
 WiFiClient client;
 HTTPClient http;
-String SENSOR_NAME = "Test Sensor 1";
 
 //WIFI FUNCTIONS
 bool setupWiFi();
@@ -43,14 +43,18 @@ void scanWifi();
 //TEMP DATA FUNCTIONS
 void updateData();
 void sendData();
+void changeURL(String);
+void changeName(String);
 
 // SYSTEM FUNCTIONS
 void saveCreds();
 void loadCreds();
+void printCreds();
 void printData();
 void blinkLED(int);
 void printNetworkStatus();
 void SPIMenu();
 
 void(* resetFunc) (void) = 0;
+
 #endif
