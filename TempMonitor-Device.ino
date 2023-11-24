@@ -1,23 +1,26 @@
 #include "TempMonitor-Device.h"
 
+//APP SETUP
 void setup() {
 	Serial.begin(BAUD_RATE);
 	delay(1000);	
 	loadCreds();
 
-
-	setupWiFi();
+	WiFi.mode(WIFI_MODE);
+	setupWiFi(SSID,PASSWORD);
 	dht.begin();
 	
 }
 
+//MAINLOOP
 void loop() {
-	//Send an HTTP POST request every 5 seconds
+	//check for command via Serial
 	if(Serial.peek() != -1)
 	{
 		SPIMenu();
 	}
 
+	//Send an HTTP POST request every 5 seconds
 	if ((millis() - lastTime) > timerDelay) {
 		updateData();
 		printData();
@@ -29,54 +32,45 @@ void loop() {
 
 
 //WIFI FUNCTIONS
-void setupWiFi(){
-    WiFi.mode(WIFI_MODE);
-    WiFi.begin(SSID.c_str(), PASSWORD.c_str());
+bool setupWiFi(String ssid, String password){
+    
+    WiFi.begin(ssid.c_str(), password.c_str());
   	Serial.println("Connecting");
 
-	int attemptCount = 0;
-  	while((WiFi.status() != WL_CONNECTED) && attemptCount <150) {
+	int temp = millis();
+  	while((WiFi.status() != WL_CONNECTED) && (millis() - lastTime) > timerDelay) {
     	Serial.print(".");
 		delay(100);
-		attemptCount++;
+		temp = millis();
   	}
 	if (WiFi.status()==WL_CONNECTED){
 		Serial.print("\nConnected to WiFi network with IP Address: ");
 		Serial.println(WiFi.localIP());
 		printNetworkStatus();
+		return true;
 	}
 	else{
 		Serial.println("Connection timed out, could not connect to wifi.");
 		WiFi.disconnect();
+		return false;
 
 	}
 }
 
 void changeWifiCreds(String ssid, String password){
 	WiFi.disconnect();
-	WiFi.begin(ssid.c_str(), password.c_str());
-	Serial.println("Connecting");
-
-	int attemptCount = 0;
-  	while (WiFi.status() != WL_CONNECTED && attemptCount <150) {
-    	Serial.print(".");
-		delay(100);
-		attemptCount++;
-  	}
-	if (WiFi.status()==WL_CONNECTED){
-		Serial.print("\nConnected to WiFi network with IP Address: ");
-		Serial.println(WiFi.localIP());
-		printNetworkStatus();
-		SSID = ssid;
-		PASSWORD = password;
+	//IF WIFI CHANGE SUCCESSFUL:
+	//SAVE CREDENTIALS
+	if(setupWiFi(ssid, password)){
 		saveCreds();
 	}
 
+	//IF WIFI CHANGE FAILS:
+	//
+	//
 	else{
-		Serial.println("Connection timed out, could not connect to wifi.");
-		WiFi.disconnect();
+		Serial.println("Error: Wifi change failed.");
 	}
-	
 }
 
 void scanWifi(){
@@ -101,10 +95,6 @@ void scanWifi(){
     Serial.print(" dBm\n");
   }
 }
-
-
-
-
 
 //TEMP DATA FUNCTIONS
 void updateData(){

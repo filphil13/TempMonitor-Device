@@ -23,6 +23,7 @@ unsigned long timerDelay = 5000;
 #define ONBOARD_LED  2
 #define BAUD_RATE 115200
 #define SCAN_INTERVAL 5000
+#define WIFI_TIMEOUT 15000
 Preferences preferences;
 
 //WIFI VARIABLES
@@ -35,7 +36,7 @@ HTTPClient http;
 String SENSOR_NAME = "Test Sensor 1";
 
 //WIFI FUNCTIONS
-void setupWiFi();
+bool setupWiFi();
 void changeWifiCreds(String, String);
 void scanWifi();
 
