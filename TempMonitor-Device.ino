@@ -1,28 +1,202 @@
-#include <ArduinoJson.h>
+#include "TempMonitor-Device.h"
 
-#include <DHT.h>
-#include "WiFi.h"
-#include <HTTPClient.h>
+void setup() {
+	Serial.begin(BAUD_RATE);
+	delay(1000);	
+	loadCreds();
 
-#define DHTPIN 4
-#define ONBOARD_LED  2
-#define BAUD_RATE 115200
-#define WIFI_MODE WIFI_STA
-#define SCAN_INTERVAL 5000
-#define DHTTYPE DHT22
 
-String SSID = "";
-String PASSWORD = "";
-String IP = "http://temp-monitor-a38f32c02c5e.herokuapp.com/updateSensor";
-DHT dht(DHTPIN, DHTTYPE);
-WiFiClient client;
-HTTPClient http;
-String SENSOR_NAME = "Test Sensor 1";
-float TEMPERATURE = 0.0f;
-float HUMIDITY = 0.0f;
+	setupWiFi();
+	dht.begin();
+	
+}
 
-unsigned long lastTime = 0;
-unsigned long timerDelay = 5000;
+void loop() {
+	//Send an HTTP POST request every 5 seconds
+	if(Serial.peek() != -1)
+	{
+		SPIMenu();
+	}
+
+	if ((millis() - lastTime) > timerDelay) {
+		updateData();
+		printData();
+		sendData();
+		
+		lastTime = millis();
+	}
+}
+
+
+//WIFI FUNCTIONS
+void setupWiFi(){
+    WiFi.mode(WIFI_MODE);
+    WiFi.begin(SSID.c_str(), PASSWORD.c_str());
+  	Serial.println("Connecting");
+
+	int attemptCount = 0;
+  	while((WiFi.status() != WL_CONNECTED) && attemptCount <150) {
+    	Serial.print(".");
+		delay(100);
+		attemptCount++;
+  	}
+	if (WiFi.status()==WL_CONNECTED){
+		Serial.print("\nConnected to WiFi network with IP Address: ");
+		Serial.println(WiFi.localIP());
+		printNetworkStatus();
+	}
+	else{
+		Serial.println("Connection timed out, could not connect to wifi.");
+		WiFi.disconnect();
+
+	}
+}
+
+void changeWifiCreds(String ssid, String password){
+	WiFi.disconnect();
+	WiFi.begin(ssid.c_str(), password.c_str());
+	Serial.println("Connecting");
+
+	int attemptCount = 0;
+  	while (WiFi.status() != WL_CONNECTED && attemptCount <150) {
+    	Serial.print(".");
+		delay(100);
+		attemptCount++;
+  	}
+	if (WiFi.status()==WL_CONNECTED){
+		Serial.print("\nConnected to WiFi network with IP Address: ");
+		Serial.println(WiFi.localIP());
+		printNetworkStatus();
+		SSID = ssid;
+		PASSWORD = password;
+		saveCreds();
+	}
+
+	else{
+		Serial.println("Connection timed out, could not connect to wifi.");
+		WiFi.disconnect();
+	}
+	
+}
+
+void scanWifi(){
+	Serial.println("** Scan Networks **");
+  int numSsid = WiFi.scanNetworks();
+  if (numSsid == -1) {
+    Serial.println("Couldn't get a wifi connection");
+    while (true);
+  }
+
+  // print the list of networks seen:
+  Serial.print("number of available networks:");
+  Serial.println(numSsid);
+
+  // print the network number and name for each network found:
+  for (int thisNet = 0; thisNet < numSsid; thisNet++) {
+    Serial.print(thisNet);
+    Serial.print(") ");
+    Serial.print(WiFi.SSID(thisNet));
+    Serial.print("\tSignal: ");
+    Serial.print(WiFi.RSSI(thisNet));
+    Serial.print(" dBm\n");
+  }
+}
+
+
+
+
+
+//TEMP DATA FUNCTIONS
+void updateData(){
+	TEMPERATURE = dht.readTemperature();
+	HUMIDITY = dht.readHumidity();
+
+	if (isnan(HUMIDITY) || isnan(TEMPERATURE)){
+    Serial.println(F("Failed to read from DHT sensor!"));
+    return;
+  }
+}
+
+void sendData(){
+	if(WiFi.status()== WL_CONNECTED){
+		http.begin(client, IP.c_str());
+		http.addHeader("Content-Type", "application/json");
+
+		StaticJsonDocument<96> doc;
+
+		doc["name"] = SENSOR_NAME;
+		doc["temperature"] = TEMPERATURE;
+		doc["humidity"] = HUMIDITY;
+		doc["time"] = 0;
+		
+		String output;
+		serializeJson(doc, output);
+		Serial.println(output);
+		Serial.println();
+
+
+		int httpResponseCode = http.POST(output);
+
+		Serial.print("HTTP Response code: ");
+		Serial.println(httpResponseCode);
+
+		doc.clear();
+		http.end();
+	}
+}
+
+//SYSTEM FUNCTIONS
+
+void loadCreds(){
+	preferences.begin("sensor-creds",false);
+	String ssid = preferences.getString("ssid", "");
+	String password = preferences.getString("password", "");
+	String name = preferences.getString("name", "");
+
+	Serial.println(ssid);
+	Serial.println(password);
+	//If no credentials are saved, prompt user for setup on serial
+	if (ssid == ""){
+		unsigned long lastMsgTime = millis();
+		Serial.println("Please Enter SSID");
+		while(Serial.peek() == -1)
+		{
+			if ((millis() - lastTime) > timerDelay) {
+				Serial.println("Please Enter SSID");
+
+				lastTime = millis();
+			}
+		}
+		ssid = Serial.readString();
+		Serial.println("Please Enter PASSWORD");
+		while(Serial.peek() == -1)
+		{
+			if ((millis() - lastTime) > timerDelay) {
+				Serial.println("Please Enter PASSWORD");
+				
+				lastTime = millis();
+			}
+		}
+		password = Serial.readString();
+	}
+
+	SSID = ssid;
+	PASSWORD = password;
+	SENSOR_NAME = name;
+	saveCreds();
+
+	preferences.end();	
+}
+
+void saveCreds(){
+	preferences.begin("sensor-creds", false);
+
+	preferences.putString("ssid", SSID);
+	preferences.putString("password", PASSWORD);
+	preferences.putString("name", SENSOR_NAME);
+
+	preferences.end();
+}
 
 void printData(){
 	Serial.println("TEMP: " + String(TEMPERATURE) + "C");
@@ -38,21 +212,6 @@ void blinkLED(int numOfBlinks){
 	}
 }
 
-void setupWiFi(){
-    WiFi.mode(WIFI_MODE);
-    WiFi.begin(SSID, PASSWORD);
-  	Serial.println("Connecting");
-
-	int attemptCount = 0;
-  	while(WiFi.status() != WL_CONNECTED) {
-    	Serial.print(".");
-		delay(100);
-  	}
-	Serial.print("\nConnected to WiFi network with IP Address: ");
-	Serial.println(WiFi.localIP());
-	printNetworkStatus();
-}
-
 void printNetworkStatus(){
 	if (WiFi.status() != WL_CONNECTED){
     	Serial.println("\nNOT CONNECTED TO ANY NETWORK");
@@ -64,63 +223,54 @@ void printNetworkStatus(){
 	}
 }
 
-void updateData(){
-	TEMPERATURE = dht.readTemperature();
-	HUMIDITY = dht.readHumidity();
+//SPI MENU
+// h  - display spi menu
+// cw - change wifi credentials
+// cn - change sensor name
+// pn - print network settings
+// sn - scan nearby networks
+// r  - restart sensor
 
-	if (isnan(HUMIDITY) || isnan(TEMPERATURE)){
-    Serial.println(F("Failed to read from DHT sensor!"));
-    return;
-  }
-}
+void SPIMenu(){
+	String msg = Serial.readString();
+	if (msg == "h"){
+		Serial.println("h  - display spi menu");
+		Serial.println("cw - Change Wifi Credentials");
+		Serial.println("cn - Change Sensor Name");
+		Serial.println("pn - View Network Settings");
+		Serial.println("sn - Print Nearby Networks");
+		Serial.println("r  - Restart Sensor");
+	}
+	else if(msg == "cw"){
 
-void sendData(){
+		Serial.println("Please Enter SSID");
+		while(Serial.peek() == -1){}
+		String ssid = Serial.readString();
 
+		Serial.println("Please Enter PASSWORD");
+		while(Serial.peek() == -1){}
+		String password = Serial.readString();
 
-    http.begin(client, IP.c_str());
-    http.addHeader("Content-Type", "application/json");
+		changeWifiCreds(ssid,password);
+	}
+	else if(msg == "cn"){
+		Serial.println("Please Enter Name");
+		while(Serial.peek() == -1){}
 
-	StaticJsonDocument<96> doc;
-
-	doc["name"] = SENSOR_NAME;
-	doc["temperature"] = TEMPERATURE;
-	doc["humidity"] = HUMIDITY;
-	doc["time"] = 0;
-	
-	String output;
-	serializeJson(doc, output);
-	Serial.println(output);
-	Serial.println();
-
-
-    int httpResponseCode = http.POST(output);
-
-    Serial.print("HTTP Response code: ");
-    Serial.println(httpResponseCode);
-
-	doc.clear();
-    http.end();
-}
-
-void setup() {
-	Serial.begin(BAUD_RATE);
-	delay(1000);
-	setupWiFi();
-	dht.begin();
-}
-
-void loop() {
-  //Send an HTTP POST request every 5 seconds
-	if ((millis() - lastTime) > timerDelay) {
-		updateData();
-		printData();
-		//Check WiFi connection status
-		if(WiFi.status()== WL_CONNECTED){
-		sendData();
-		}
-		else {
-		Serial.println("WiFi Disconnected");
-		}
-		lastTime = millis();
+		SENSOR_NAME = Serial.readString();
+	}
+	else if(msg == "pn"){
+		printNetworkStatus();
+	}
+	else if(msg == "sn"){
+		scanWifi();
+	}
+	else if(msg == "r"){
+		resetFunc();
+	}
+	else{
+		Serial.println(msg);
+		Serial.println(msg);
+		Serial.println("Error: command not found.");
 	}
 }
