@@ -9,7 +9,6 @@ void setup() {
 	WiFi.mode(WIFI_MODE);
 	setupWiFi(SSID,PASSWORD);
 	dht.begin();
-	
 }
 
 //MAINLOOP
@@ -29,7 +28,6 @@ void loop() {
 		lastTime = millis();
 	}
 }
-
 
 //WIFI FUNCTIONS
 bool setupWiFi(String ssid, String password){
@@ -112,19 +110,17 @@ void sendData(){
 		http.begin(client, URL.c_str());
 		http.addHeader("Content-Type", "application/json");
 
-		StaticJsonDocument<96> doc;
+		StaticJsonDocument<200> doc;
 
-		doc["name"] = SENSOR_NAME;
-		doc["temperature"] = TEMPERATURE;
-		doc["humidity"] = HUMIDITY;
-		doc["time"] = 0;
+		doc["Temperature"] = TEMPERATURE;
+		doc["Humidity"] = HUMIDITY;
+		doc["Time"] = 0;
 		
 		String output;
 		serializeJson(doc, output);
 		Serial.println(output);
 		Serial.println();
-
-
+		
 		int httpResponseCode = http.POST(output);
 
 		Serial.print("HTTP Response code: ");
@@ -136,7 +132,7 @@ void sendData(){
 }
 
 void changeURL(String url){
-	URL = url;
+	URL = url + "/api/update?name=" + SENSOR_NAME;
 	saveCreds();
 }
 
@@ -222,6 +218,8 @@ void printCreds(){
 void printData(){
 	Serial.println("TEMP: " + String(TEMPERATURE) + "C");
 	Serial.println("HUMIDITY: " + String(HUMIDITY) + "%");
+	Serial.println(URL);
+
 }
 
 void blinkLED(int numOfBlinks){
@@ -255,6 +253,8 @@ void printNetworkStatus(){
 
 void SPIMenu(){
 	String msg = Serial.readString();
+
+
 	if (msg == "h"){
 		Serial.println("h  	- display spi menu");
 		Serial.println("r  	- Restart Sensor");
