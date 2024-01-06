@@ -39,7 +39,7 @@ bool setupWiFi(String ssid, String password){
     WiFi.begin(ssid.c_str(), password.c_str()); // Connect to the WiFi network
   	Serial.println("Connecting");
 
-  	while(!((millis() - lastTime) > WIFI_TIMEOUT)) {
+  	while(WiFi.status() != WL_CONNECTED || !(millis() - lastTime) > WIFI_TIMEOUT) {
     	switch(WiFi.status()) {
           case WL_NO_SSID_AVAIL:
             Serial.println("[WiFi] SSID not found");
@@ -59,12 +59,6 @@ bool setupWiFi(String ssid, String password){
             Serial.println("[WiFi] WiFi is disconnected");
 			return false;
             break;
-          case WL_CONNECTED:
-            Serial.println("[WiFi] WiFi is connected!");
-            Serial.print("[WiFi] IP address: ");
-            Serial.println(WiFi.localIP());
-            return true;
-            break;
           default:
             Serial.print("[WiFi] WiFi Status: ");
             Serial.println(WiFi.status());
@@ -75,9 +69,12 @@ bool setupWiFi(String ssid, String password){
   	}
 	
 	if (WiFi.status()==WL_CONNECTED){
-		Serial.print("\nConnected to WiFi network with IP Address: ");
-		Serial.println(WiFi.localIP());
+		Serial.println("[WiFi] WiFi is connected!");
+        Serial.print("[WiFi] IP address: ");
+        Serial.println(WiFi.localIP());
 		printNetworkStatus();
+		SSID = ssid;
+		PASSWORD = password;
 		return true;
 	}
 
@@ -415,9 +412,10 @@ void SPIMenu(){
 /**
  * Performs OTA (Over-The-Air) update using EspGhota library.
  */
-/*
+
 void performOTAUpdate() {
 	// Initialize the OTA updater
+	/*
 	EspGhota otaUpdater;
 
 	// Set the GitHub repository details
@@ -441,5 +439,29 @@ void performOTAUpdate() {
 
 	// Start the OTA update process
 	otaUpdater.begin();
+	*/
+}
+
+
+//#include <esp_sleep.h>
+
+/**
+ * Puts the ESP32 into deep sleep mode for a specified duration.
+ * @param duration The sleep duration in microseconds.
+ */
+/*
+void deepSleepWithTimer(uint64_t duration) {
+	esp_sleep_enable_timer_wakeup(duration);
+	esp_deep_sleep_start();
 }
 */
+/**
+ * Puts the ESP32 into deep sleep mode until a serial event occurs.
+ */
+/*
+void deepSleepWithSerialWakeUp() {
+	esp_sleep_enable_uart_wakeup();
+	esp_deep_sleep_start();
+}
+*/
+
