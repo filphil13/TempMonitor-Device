@@ -57,7 +57,6 @@ bool setupWiFi(String ssid, String password){
             break;
           case WL_DISCONNECTED:
             Serial.println("[WiFi] WiFi is disconnected");
-			return false;
             break;
           default:
             Serial.print("[WiFi] WiFi Status: ");
