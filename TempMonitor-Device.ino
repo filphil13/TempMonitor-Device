@@ -38,43 +38,36 @@ void loop() {
 bool setupWiFi(String ssid, String password){
     WiFi.begin(ssid.c_str(), password.c_str()); // Connect to the WiFi network
   	Serial.println("Connecting");
-
-  	while(WiFi.status() != WL_CONNECTED || !(millis() - lastTime) > WIFI_TIMEOUT) {
+	lastTime = millis();
+  	while((millis() - lastTime) < WIFI_TIMEOUT) {
     	switch(WiFi.status()) {
           case WL_NO_SSID_AVAIL:
             Serial.println("[WiFi] SSID not found");
-            break;
+			break;
           case WL_CONNECT_FAILED:
             Serial.print("[WiFi] Failed - WiFi not connected! Reason: ");
-            return false;
             break;
           case WL_CONNECTION_LOST:
             Serial.println("[WiFi] Connection was lost");
-			return false;
             break;
+		  case WL_CONNECTED:
+		  	Serial.println("[WiFi] WiFi is connected!");
+			Serial.println("[WiFi] IP address: ");
+			Serial.print(WiFi.localIP());
+			printNetworkStatus();
+			SSID = ssid;
+			PASSWORD = password;
+			return true;
           default:
             Serial.print("[WiFi] WiFi Status: ");
             Serial.println(WiFi.status());
             break;
         }
-		Serial.print(".");
-		delay(500);
-  	}
-	
-	if (WiFi.status()==WL_CONNECTED){
-		Serial.println("[WiFi] WiFi is connected!");
-        Serial.print("[WiFi] IP address: ");
-        Serial.println(WiFi.localIP());
-		printNetworkStatus();
-		SSID = ssid;
-		PASSWORD = password;
-		return true;
-	}
 
-	else{
-		Serial.println("Connection timed out, could not connect to wifi.");
-		return false;
-	}
+		delay(500);
+
+  	}
+	return false;
 }
 
 /**

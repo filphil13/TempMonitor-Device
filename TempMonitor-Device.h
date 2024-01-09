@@ -23,7 +23,7 @@ unsigned long timerDelay = 5000;     // Delay between temperature scans
 #define ONBOARD_LED 2             // Pin number for onboard LED
 #define BAUD_RATE 115200          // Serial communication baud rate
 #define SCAN_INTERVAL 5000        // Interval for scanning WiFi networks
-#define WIFI_TIMEOUT 15000        // Timeout for connecting to WiFi
+#define WIFI_TIMEOUT 10000        // Timeout for connecting to WiFi
 #define WIFI_RECONNECT_TIMEOUT 5000 // Timeout for reconnecting to WiFi
 Preferences preferences;         // Object for storing preferences
 
