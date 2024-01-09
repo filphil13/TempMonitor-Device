@@ -41,30 +41,38 @@ bool setupWiFi(String ssid, String password){
 	lastTime = millis();
   	while((millis() - lastTime) < WIFI_TIMEOUT) {
     	switch(WiFi.status()) {
-          case WL_NO_SSID_AVAIL:
-            Serial.println("[WiFi] SSID not found");
-			break;
-          case WL_CONNECT_FAILED:
-            Serial.print("[WiFi] Failed - WiFi not connected! Reason: ");
-            break;
-          case WL_CONNECTION_LOST:
-            Serial.println("[WiFi] Connection was lost");
-            break;
-		  case WL_CONNECTED:
-		  	Serial.println("[WiFi] WiFi is connected!");
-			Serial.println("[WiFi] IP address: ");
-			Serial.print(WiFi.localIP());
-			printNetworkStatus();
-			SSID = ssid;
-			PASSWORD = password;
-			return true;
-          default:
-            Serial.print("[WiFi] WiFi Status: ");
-            Serial.println(WiFi.status());
-            break;
+        	case WL_NO_SSID_AVAIL:
+				Serial.println("[WiFi] SSID not found");
+				break;
+		  	case WL_SCAN_COMPLETED:
+				Serial.println("[WiFi] Scan completed");
+				break;
+			case WL_IDLE_STATUS:
+				Serial.println("[WiFi] Idle status");
+				break;
+			case WL_DISCONNECTED:
+				Serial.println("[WiFi] Disconnected");
+				break;
+			case WL_CONNECT_FAILED:
+				Serial.print("[WiFi] Failed - WiFi not connected! Reason: ");
+				break;
+			case WL_CONNECTION_LOST:
+				Serial.println("[WiFi] Connection was lost");
+				break;
+			case WL_CONNECTED:
+				Serial.println("[WiFi] WiFi is connected!");
+				Serial.println("[WiFi] IP address: ");
+				Serial.print(WiFi.localIP());
+				printNetworkStatus();
+				SSID = ssid;
+				PASSWORD = password;
+				return true;
+			default:
+				Serial.print("[WiFi] WiFi Status: ");
+				Serial.println(WiFi.status());
+				break;
         }
-
-		delay(500);
+		delay(100);
 
   	}
 	return false;
