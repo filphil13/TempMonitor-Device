@@ -3,6 +3,6 @@
     "board": "esp32:esp32:esp32",
     "programmer": "esptool",
     "sketch": "TempMonitor-Device.ino",
-    "port": "COM7",
+    "port": "COM5",
     "output": "../ArduinoOutput"
 }

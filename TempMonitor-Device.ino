@@ -3,11 +3,14 @@
 //APP SETUP
 void setup() {
 	Serial.begin(BAUD_RATE); // Initialize serial communication
+	client.setInsecure(); // Set client to insecure
 	delay(1000); // Delay for stability
 	loadCreds(); // Load saved credentials
 	WiFi.mode(WIFI_MODE); // Set WiFi mode
 	setupWiFi(SSID,PASSWORD); // Connect to WiFi network
 	dht.begin(); // Initialize DHT sensor
+	updateData(); // Update temperature and humidity data
+
 }
 
 //MAINLOOP
@@ -144,29 +147,28 @@ void updateData(){
  * Sends the temperature and humidity data to the server via HTTP POST request.
  */
 void sendData(){
-	if(WiFi.status()== WL_CONNECTED){
-		http.begin(client, URL.c_str());
-		http.addHeader("Content-Type", "application/json");
-
-		StaticJsonDocument<200> doc;
-
-		doc["Temperature"] = TEMPERATURE;
-		doc["Humidity"] = HUMIDITY;
-		doc["Time"] = 0;
-		
-		String output;
-		serializeJson(doc, output);
-		Serial.println(output);
-		Serial.println();
-		
-		int httpResponseCode = http.POST(output);
-
-		Serial.print("HTTP Response code: ");
-		Serial.println(httpResponseCode);
-
-		doc.clear();
-		http.end();
-	}
+    if(WiFi.status()== WL_CONNECTED){
+        Serial.println("Sending Data...");
+        http.begin(client, URL + "/api/update?name=" + SENSOR_NAME+"&userToken="+USER_TOKEN);
+        http.addHeader("Content-Type", "application/json");
+        StaticJsonDocument<200> doc;
+        doc["Temperature"] = TEMPERATURE;
+        doc["Humidity"] = HUMIDITY;
+        doc["Time"] = 0;
+        String output;
+        serializeJson(doc, output);
+        Serial.println(output);
+        Serial.println();
+        int httpResponseCode = http.POST(output);
+        Serial.print("HTTP Response code: ");
+        Serial.println(httpResponseCode);
+		if (httpResponseCode < 0) {
+			String response = http.getString();
+			Serial.println(response);
+		}
+        doc.clear();
+        http.end();
+    }
 }
 
 /**
@@ -174,10 +176,18 @@ void sendData(){
  * @param url The new URL address.
  */
 void changeURL(String url){
-	URL = url + "/api/update?name=" + SENSOR_NAME;
+	URL = url;
 	saveCreds();
 }
 
+/**
+ * Changes the user token and saves it.
+ * @param token The new user token.
+ */
+void changeUserToken(String userToken){
+	USER_TOKEN = userToken;
+	saveCreds();
+}
 /**
  * Changes the sensor name and saves it.
  * @param name The new sensor name.
@@ -198,6 +208,7 @@ void loadCreds(){
 	String password = preferences.getString("password", "");
 	String name = preferences.getString("name", "NO_NAME_SET");
 	String url = preferences.getString("url", "");
+	String usertoken = preferences.getString("usertoken", "");
 
 	Serial.println(ssid);
 	Serial.println(password);
@@ -224,7 +235,7 @@ void loadCreds(){
 	PASSWORD = password;
 	SENSOR_NAME = name;
 	URL = url;
-
+	USER_TOKEN = usertoken;
 	saveCreds();
 
 	preferences.end();	
@@ -240,6 +251,7 @@ void saveCreds(){
 	preferences.putString("password", PASSWORD);
 	preferences.putString("name", SENSOR_NAME);
 	preferences.putString("url", URL);
+	preferences.putString("usertoken", USER_TOKEN);
 
 	preferences.end();
 }
@@ -271,11 +283,13 @@ void printCreds(){
 	String password = preferences.getString("password", "");
 	String name = preferences.getString("name", "NO_NAME_SET");
 	String url = preferences.getString("url", "");
+	String usertoken = preferences.getString("usertoken", "");
 
 	Serial.println("SSID: " + SSID);
 	Serial.println("PASSWORD: " + PASSWORD);
 	Serial.println("NAME: " + SENSOR_NAME);
 	Serial.println("URL: " + URL);
+	Serial.println("USERTOKEN: " + USER_TOKEN);
 
 	preferences.end();
 
@@ -287,7 +301,7 @@ void printCreds(){
 void printData(){
 	Serial.println("TEMP: " + String(TEMPERATURE) + "C");
 	Serial.println("HUMIDITY: " + String(HUMIDITY) + "%");
-	Serial.println(URL);
+	Serial.println(URL + "/api/update?name=" + SENSOR_NAME + "&userToken="+USER_TOKEN);
 
 }
 
@@ -343,6 +357,7 @@ void SPIMenu(){
 		Serial.println("");
 		Serial.println("pn 	- Print Network Settings");
 		Serial.println("pc	- Print Credentials");
+		Serial.println("cut - Change User Token");
 		Serial.println("sn 	- Print Nearby Networks");
 		Serial.println("sc 	- Save Credentials");
 		
@@ -370,6 +385,15 @@ void SPIMenu(){
 		String name = Serial.readString();
 		changeName(name);
 	}
+	else if(msg == "cut"){
+		Serial.println("Please Enter User Token");
+		while(Serial.peek() == -1){}
+
+		String usertoken = Serial.readString();
+		changeUserToken(usertoken);
+	}
+
+
 	else if(msg == "cu"){
 		Serial.println("Please Enter the new URL Address:");
 		while(Serial.peek() == -1){}
